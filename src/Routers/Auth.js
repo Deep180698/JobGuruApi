@@ -81,6 +81,8 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+
+
 // Sign up User Api
 router.post('/signup', upload.single('profileImage'), async (req, res) => {
   try {
@@ -436,7 +438,13 @@ router.post('/postFavourite', authenticateToken, async (req, res) => {
   const userId = req.user.userId;
   const { postID, isFavourite } = req.body
 
-  if (isFavourite) {
+  console.log(postID);
+  console.log(userId);
+  const favorite = await Schema.favoriteModelSchema.findOne({userId:userId , postID : postID})
+
+  
+  console.log(favorite);
+  if (favorite == null) {
     const newUser = new Schema.favoriteModelSchema({
       userId: userId,
       postID: postID,
@@ -447,14 +455,20 @@ router.post('/postFavourite', authenticateToken, async (req, res) => {
 
   } else {
 
-    const favorite = await Schema.favoriteModelSchema.find()
-    console.log(favorite.length);
+    const favorite = await Schema.favoriteModelSchema.deleteMany({userId:userId , postID : postID})
+        const newUser = new Schema.favoriteModelSchema(favorite);
 
-    const filteredData = favorite.filter(item => !(item.userId === userId && item.postID === postID));
-    const newUser = new Schema.favoriteModelSchema(filteredData);
     await newUser.save();
-    console.log("fileFilter", filteredData.length);
     res.json({ message: 'Post removed in favorite successfully' });
+
+    // const favorite = await Schema.favoriteModelSchema.find()
+    // console.log(favorite.length);
+
+    // const filteredData = favorite.filter(item => !(item.userId === userId && item.postID === postID));
+    // const newUser = new Schema.favoriteModelSchema(filteredData);
+    // await newUser.save();
+    // console.log("fileFilter", filteredData.length);
+    // res.json({ message: 'Post removed in favorite successfully' });
 
 
   }

@@ -1,17 +1,30 @@
+// import express 
 const express = require('express')
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken');
-const router = new express.Router()
-const Schema = require('../Model/Schema')
-const country = require('../JSON/country.json')
-const multer = require('multer')
 
+// import bcrypt for password encrypt
+const bcrypt = require('bcrypt')
+
+//  import jwt for genrate random token
+const jwt = require('jsonwebtoken');
+
+const router = new express.Router()
+
+// import schema fror fetch database
+const Schema = require('../Model/Schema')
+
+
+const country = require('../JSON/country.json')
+
+// image store from backend
+const multer = require('multer')
 const bodyParser = require('body-parser');
+
+// mail send 
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+
+// Store Images
 const fs = require('fs');
-
-
 const Images = 'src/Images';
 
 fs.mkdirSync(Images, { recursive: true });
@@ -81,24 +94,29 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-
-
 // Sign up User Api
 router.post('/signup', upload.single('profileImage'), async (req, res) => {
   try {
     const { firstName, lastName, mobileNumber, countryCode, email, password, address, city, country, zipcode, DOB, province, checked } = req.body;
 
-    console.log("email", req.body);
     // Validate email format
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format.' });
+      return res.status(401).json({ error: 'Invalid email format.' });
     }
 
     // Validate mobile number format
     if (!mobileNumebrRegex.test(String(mobileNumber))) {
-      console.log("111111");
-      return res.status(400).json({ error: 'Invalid mobile number format.' });
+      return res.status(401).json({ error: 'Invalid mobile number format.' });
     }
+    const user = await Schema.UserModelSchema.findOne({ 'userData.mobileNumber': mobileNumber });
+    if (!user) {
+      return res.status(401).json({ error: 'mobileNumber already user' });
+
+    }
+    if (!newUser.checked) {
+      return res.status(401).json({ error: 'User must be checked during signup.' });
+    }
+
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -126,20 +144,18 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
 
     });
 
-    if (!newUser.checked) {
-      return res.status(400).json({ error: 'User must be checked during signup.' });
-    }
-    console.log("1234", newUser);
-
 
     const createdUser = await newUser.save();
-    res.status(200).json({ message: 'User signup successful.', user: createdUser });
+    const token = jwt.sign({ userId: createdUser._id }, 'your-secret-key', { expiresIn: '1h' });
+
+    return res.status(200).json({ message: 'User signup successful.', token, data: createdUser, userId: createdUser._id });
+
   } catch (error) {
     console.log(error);
     if (error.code === 11000 || error.code === 11001) {
       // MongoDB duplicate key error
 
-      res.status(400).json({ error: 'Mobile number or email must be unique.' });
+      res.status(401).json({ error: 'Mobile number or email must be unique.' });
     } else {
       // Other errors
       res.status(500).json({ error: 'Internal Server Error' });
@@ -147,22 +163,17 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
   }
 });
 
-
 // Login Api
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    console.log(req.body);
-    // Find the user by email in the database
-
-
     const user = await Schema.UserModelSchema.findOne({ 'userData.email': email });
-    console.log(user);
 
     // Check if the user exists
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials.' });
+
     }
 
     const password1 = user.userData.password;
@@ -182,98 +193,12 @@ router.post('/login', async (req, res) => {
     // // Update the user record with the JWT token
     await Schema.UserModelSchema.findByIdAndUpdate(user._id, { $set: { token } });
 
-    res.status(200).json({ message: 'User login successful.', token, data: user, userId: user._id });
+    return res.status(200).json({ message: 'User login successful.', token, data: user, userId: user._id });
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-// Profile details API
-router.get('/profile', authenticateToken, async (req, res) => {
 
-  try {
-
-    const user = await Schema.UserModelSchema.findOne();
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.log("user Data",user);
-    res.json(user.userData);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-//Update-profile
-// Protected endpoint for updating user profile
-router.put('/update-profile',authenticateToken, upload.single('profileImage'), async (req, res) => {
-
-  const userId = req.user.userId; // Extracted from the token
-  const updatedProfile = req.file;
-
-  const userData = req.body
-
-  console.log("req.body",req.body);
-  // // Assuming user data is stored using the "_id" property
-  const user = await Schema.UserModelSchema.findOne({_id:userId});
-
-  userData.email = user.userData.email
-
-  userData.password = user.userData.password
-  // console.log("userData",userData);
-  // console.log("user",user);
-
-
-  if (user) {
-    user.userData = userData
-    user.userData.profileImage = req.file === undefined ?req.body.profileImage: updatedProfile.destination + '/' + updatedProfile.filename 
-
-    console.log(user.userData);
-
-    await user.save();
-    res.json({ message: 'Profile updated successfully', userData: user.userData });
-  } else {
-    res.status(404).json({ error: 'User not found' });
-  }
-});
-//check_user
-router.post('/check_user', async (req, res) => {
-  const { email } = req.body;
-  console.log(email);
-  // const userExists = users.some(user => user.email === newUser.email);
-
-  const user = await Schema.UserModelSchema.findOne({ email: email });
-
-  if (user) {
-    res.json({ exists: true, message: 'User already exists.' });
-  } else {
-    res.json({ exists: false, message: 'Add user details' });
-  }
-});
-//fields
-router.get('/fields', async (req, res) => {
-
-  try {
-    const user = await Schema.fieldModelSchema.find()
-    res.send(user);
-
-  } catch (error) {
-
-    res.status(error);
-  }
-});
-//Users
-router.get('/Users', async (req, res) => {
-  try {
-    const user = await Schema.signUpModelSchema.find()
-    res.send(user);
-
-
-  } catch (error) {
-    res.send(error)
-  }
-})
 
 // Forgot Password endpoint
 router.post('/forgot-password', async (req, res) => {
@@ -321,6 +246,7 @@ router.post('/forgot-password', async (req, res) => {
     return res.json({ message: 'Reset email sent successfully' });
   });
 });
+
 // Reset Password endpoint
 router.post('/reset-password/:token', async (req, res) => {
   const { token } = req.params;
@@ -352,13 +278,106 @@ router.post('/reset-password/:token', async (req, res) => {
   return res.json({ message: 'Password reset successful' });
 });
 
+// Profile details API
+router.get('/profile', authenticateToken, async (req, res) => {
+
+  try {
+
+    const user = await Schema.UserModelSchema.findOne();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log("user Data", user);
+    res.json(user.userData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+//Update-profile
+router.put('/update-profile', authenticateToken, upload.single('profileImage'), async (req, res) => {
+
+  const userId = req.user.userId; // Extracted from the token
+  const updatedProfile = req.file;
+
+  const userData = req.body
+
+  console.log("req.body", req.body);
+  // // Assuming user data is stored using the "_id" property
+  const user = await Schema.UserModelSchema.findOne({ _id: userId });
+
+  userData.email = user.userData.email
+
+  userData.password = user.userData.password
+  // console.log("userData",userData);
+  // console.log("user",user);
+
+
+  if (user) {
+    user.userData = userData
+    user.userData.profileImage = req.file === undefined ? req.body.profileImage : updatedProfile.destination + '/' + updatedProfile.filename
+
+    console.log(user.userData);
+
+    await user.save();
+    res.json({ message: 'Profile updated successfully', userData: user.userData });
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
+});
+
+//check_user
+router.post('/check_user', async (req, res) => {
+  const { email } = req.body;
+  const user = await Schema.UserModelSchema.findOne({ 'userData.email': email });
+
+  if (user) {
+    return res.status(401).json({ error: 'User already exists.' });
+  } else {
+    return res.json({ exists: false, message: 'Add user details' });
+  }
+
+});
+
+//fields
+router.get('/fields', async (req, res) => {
+
+  try {
+    const user = await Schema.fieldModelSchema.find()
+    res.send(user);
+
+  } catch (error) {
+
+    res.status(error);
+  }
+});
+
+//Users
+router.get('/Users', async (req, res) => {
+  try {
+    const user = await Schema.signUpModelSchema.find()
+    res.send(user);
+
+
+  } catch (error) {
+    res.send(error)
+  }
+})
+
 // Create post
 router.post('/create-post', upload.array('images'), authenticateToken, async (req, res) => {
-  const { firstName, lastName, profileImage, images, title, description, salary, jobType, skills, additionalNote, address } = req.body;
+  const { images, title, description, salary, jobType, skills, additionalNote, address } = req.body;
 
-  console.log(req.body);
-  if (!firstName || !lastName|| !profileImage|| !title || !description || !salary || !jobType || !skills || !address) {
-    return res.status(400).json({ error: 'Incomplete data provided' });
+  console.log("User Data :: ==", req.user.userId);
+  const user = await Schema.UserModelSchema.findOne({ '_id': req.user.userId });
+  console.log(user.userData);
+  if (!title || !description || !salary || !jobType || !skills || !address) {
+
+
+    return res.status(401).json({ error: 'Incomplete data provided' });
   }
 
   const newPost = new Schema.PostModelSchema({
@@ -367,9 +386,10 @@ router.post('/create-post', upload.array('images'), authenticateToken, async (re
       data: file.buffer,
       contentType: file.mimetype,
     })),
-    firstName,
-    lastName,
-    profileImage,
+    firstName: user.userData.firstName,
+    lastName: user.userData.lastName,
+    mobileNumber: user.userData.mobileNumber,
+    profileImage: user.userData.profileImage,
     title,
     description,
     salary,
@@ -404,7 +424,7 @@ router.get('/getPost', authenticateToken, async (req, res) => {
     // db.products.find().sort({"created_at": 1})
 
 
-    const post = await Schema.PostModelSchema.find().sort({"createdAt": 1})
+    const post = await Schema.PostModelSchema.find().sort({ "createdAt": 1 })
 
     filteredArray.forEach(filterItem => {
       const correspondingPost = post.find(postItem => postItem._id.toString() === filterItem.postID);
@@ -412,9 +432,6 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         correspondingPost.isFavourite = true;
       }
     });
-
-
-
     res.send(post);
 
   } catch (error) {
@@ -423,7 +440,7 @@ router.get('/getPost', authenticateToken, async (req, res) => {
   }
 });
 // get country
-router.get('/country',async (req, res) => {
+router.get('/country', async (req, res) => {
 
   try {
     res.send(country);
@@ -432,18 +449,13 @@ router.get('/country',async (req, res) => {
     res.status(error);
   }
 });
-// API endpoint to update isFavourite
+
+// postFavourite Api
 router.post('/postFavourite', authenticateToken, async (req, res) => {
 
   const userId = req.user.userId;
   const { postID, isFavourite } = req.body
-
-  console.log(postID);
-  console.log(userId);
-  const favorite = await Schema.favoriteModelSchema.findOne({userId:userId , postID : postID})
-
-  
-  console.log(favorite);
+  const favorite = await Schema.favoriteModelSchema.findOne({ userId: userId, postID: postID })
   if (favorite == null) {
     const newUser = new Schema.favoriteModelSchema({
       userId: userId,
@@ -454,25 +466,40 @@ router.post('/postFavourite', authenticateToken, async (req, res) => {
     res.json({ message: 'Post add as favorite successfully' });
 
   } else {
+    const result = await Schema.favoriteModelSchema.deleteOne({
+      userId: userId,
+      postID: postID,
 
-    const favorite = await Schema.favoriteModelSchema.deleteMany({userId:userId , postID : postID})
-        const newUser = new Schema.favoriteModelSchema(favorite);
-
-    await newUser.save();
-    res.json({ message: 'Post removed in favorite successfully' });
-
-    // const favorite = await Schema.favoriteModelSchema.find()
-    // console.log(favorite.length);
-
-    // const filteredData = favorite.filter(item => !(item.userId === userId && item.postID === postID));
-    // const newUser = new Schema.favoriteModelSchema(filteredData);
-    // await newUser.save();
-    // console.log("fileFilter", filteredData.length);
-    // res.json({ message: 'Post removed in favorite successfully' });
-
-
+    });
+    if (result.deletedCount === 1) {
+      res.json({ message: 'Post removed in favorite successfully' });
+    } else {
+      res.json({ message: 'post not found' });
+    }
   }
+});
+// get Favourite post
+router.get('/getFavourite', authenticateToken, async (req, res) => {
 
+  const userId = req.user.userId;
+  const favorite = await Schema.favoriteModelSchema.find()
+
+  const filteredArray = favorite.filter(item => item.userId === userId);
+
+  const newArray = await Promise.all(
+    filteredArray.map(async (i) => {
+      const postData = await Schema.PostModelSchema.findOne({ _id: i.postID });
+
+      if (postData) {
+        return { ...postData.toObject(), isFavourite: true };
+      } else {
+        // Handle the case when postData is null, for example:
+        return { isFavourite: false };
+      }
+    })
+  );
+
+  res.json({ message: 'post Data', data: newArray });
 });
 
 module.exports = router;

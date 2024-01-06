@@ -6,10 +6,8 @@ const UserSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     countryCode: String,
-    mobileNumber: {
-      type: String, require: true, index:true, sparse:true
-    },
-    email: { type: String, required: true, unique: true },
+    mobileNumber:  String,
+    email:String,
     password: String,
     address: String,
     DOB: String,
@@ -45,6 +43,7 @@ const postSchema = new mongoose.Schema({
   ],
   firstName: String,
   lastName: String,
+  mobileNumber: String,
   profileImage: String,
   title: String,
   description: String,
@@ -54,7 +53,8 @@ const postSchema = new mongoose.Schema({
   additionalNote: String,
   address: String,
   isFavourite: Boolean,
-  createdAt: {type : Date, default : Date.now()}
+
+  createdAt: { type: Date, default: Date.now() }
 });
 
 

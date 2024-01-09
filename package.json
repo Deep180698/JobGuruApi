@@ -4,7 +4,7 @@
   "description": "JobguruApi",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon app.js"
+    "start": "export PATH=/opt/render/project/src/server/node_modules/.bin:$PATH && nodemon app.js"
   },
   "author": "Deep",
   "license": "ISC",

@@ -4,7 +4,7 @@
   "description": "JobguruApi",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon app.js"
+    "start": "node app.js"
   },
   "author": "Deep",
   "license": "ISC",
@@ -22,7 +22,6 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
-    "nodemon": "^3.0.2",
-    "sucrase": "^3.35.0"
+    "nodemon": "^3.0.2"
   }
 }

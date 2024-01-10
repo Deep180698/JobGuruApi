@@ -108,10 +108,6 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
     if (!mobileNumebrRegex.test(String(mobileNumber))) {
       return res.status(401).json({ error: 'Invalid mobile number format.' });
     }
-   
-    if (!newUser.checked) {
-      return res.status(401).json({ error: 'User must be checked during signup.' });
-    }
 
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -139,6 +135,10 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
       checked: checked || false,
 
     });
+
+    if (!newUser.checked) {
+      return res.status(401).json({ error: 'User must be checked during signup.' });
+    }
 
 
     const createdUser = await newUser.save();

@@ -410,17 +410,9 @@ router.get('/getPost', authenticateToken, async (req, res) => {
 
   try {
     const userId = req.user.userId;
-    console.log(userId);
     const favorite = await Schema.favoriteModelSchema.find()
-    console.log('favorite', favorite);
-
     const filteredArray = favorite.filter(item => item.userId === userId);
-
-    console.log(filteredArray);
-    // db.products.find().sort({"created_at": 1})
-
-
-    const post = await Schema.PostModelSchema.find().sort({ "createdAt": 1 })
+    const post = await Schema.PostModelSchema.find();
 
     filteredArray.forEach(filterItem => {
       const correspondingPost = post.find(postItem => postItem._id.toString() === filterItem.postID);
@@ -428,10 +420,13 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         correspondingPost.isFavourite = true;
       }
     });
-    res.send(post);
-
+    const newPostData = post.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (newPostData.length !== 0) {
+      res.send(newPostData);
+    } else {
+      res.status(error);
+    }
   } catch (error) {
-
     res.status(error);
   }
 });

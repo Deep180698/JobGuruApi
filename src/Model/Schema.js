@@ -41,10 +41,7 @@ const postSchema = new mongoose.Schema({
       contentType: String,
     },
   ],
-  firstName: String,
-  lastName: String,
-  mobileNumber: String,
-  profileImage: String,
+  userId: String,
   title: String,
   description: String,
   salary: String,
@@ -53,7 +50,6 @@ const postSchema = new mongoose.Schema({
   additionalNote: String,
   address: String,
   isFavourite: Boolean,
-
   createdAt: { type: Date, default: Date.now() }
 });
 

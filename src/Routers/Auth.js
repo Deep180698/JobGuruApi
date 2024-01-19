@@ -60,8 +60,8 @@ const transporter = nodemailer.createTransport({
   port: 465, // Use the appropriate port for your email service
   secure: true, // Use SSL/TLS
   auth: {
-    user: 'dp19453@gmail.com',
-    pass: 'wmst sorq ufqy kmri',
+    user: process.env.UserID,
+    pass: process.env.UserPassword,
   },
   logger: true, // Enable logging
   debug: true, // Show debug output
@@ -84,11 +84,10 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Unauthorized - Token not provided' });
   }
 
-  jwt.verify(token, 'your-secret-key', (err, user) => {
+  jwt.verify(token,  process.env.SECRET_KEY, (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Forbidden - Invalid token' });
     }
-
     req.user = user;
     next();
   });
@@ -108,11 +107,7 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
     if (!mobileNumebrRegex.test(String(mobileNumber))) {
       return res.status(401).json({ error: 'Invalid mobile number format.' });
     }
-
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
-
     const userData = {
       firstName,
       lastName,
@@ -158,7 +153,6 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
     }
   }
 });
-
 // Login Api
 router.post('/login', async (req, res) => {
   try {
@@ -194,14 +188,9 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
-
 // Forgot Password endpoint
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
-
-
-  console.log("email", email);
 
   const user = await Schema.UserModelSchema.findOne({ email: email });
 
@@ -217,12 +206,6 @@ router.post('/forgot-password', async (req, res) => {
   // Update user data with reset token and expiration
   user.resetToken = resetToken;
   user.resetTokenExpires = resetTokenExpires;
-
-
-
-  user.save()
-
-  // Send reset email
 
   // const resetLink = await generateDynamicLink(resetToken);
   const mailOptions = {
@@ -246,17 +229,7 @@ router.post('/forgot-password', async (req, res) => {
 // Reset Password endpoint
 router.post('/reset-password/:token', async (req, res) => {
   const { token } = req.params;
-  const { newPassword } = req.body;
-
-  console.log(token);
-
-  // const user = await Schema.UserModelSchema.find();
-  // const user = await Schema.UserModelSchema.findOne({email :email});
-
   const user = await Schema.UserModelSchema.findOne({ resetToken: token });
-
-  console.log(user);
-
   if (!user) {
     return res.status(400).json({ message: 'Invalid or expired token' });
   }
@@ -292,26 +265,15 @@ router.get('/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
 //Update-profile
 router.put('/update-profile', authenticateToken, upload.single('profileImage'), async (req, res) => {
 
   const userId = req.user.userId; // Extracted from the token
   const updatedProfile = req.file;
-
   const userData = req.body
-
-  console.log("req.body", req.body);
-  // // Assuming user data is stored using the "_id" property
   const user = await Schema.UserModelSchema.findOne({ _id: userId });
-
   userData.email = user.userData.email
-
   userData.password = user.userData.password
-  // console.log("userData",userData);
-  // console.log("user",user);
-
-
   if (user) {
     user.userData = userData
     user.userData.profileImage = req.file === undefined ? req.body.profileImage : updatedProfile.destination + '/' + updatedProfile.filename
@@ -324,7 +286,6 @@ router.put('/update-profile', authenticateToken, upload.single('profileImage'), 
     res.status(404).json({ error: 'User not found' });
   }
 });
-
 //check_user
 router.post('/check_user', async (req, res) => {
   const { email } = req.body;
@@ -337,7 +298,6 @@ router.post('/check_user', async (req, res) => {
   }
 
 });
-
 //fields
 router.get('/fields', async (req, res) => {
 
@@ -350,7 +310,6 @@ router.get('/fields', async (req, res) => {
     res.status(error);
   }
 });
-
 //Users
 router.get('/Users', async (req, res) => {
   try {
@@ -362,74 +321,6 @@ router.get('/Users', async (req, res) => {
     res.send(error)
   }
 })
-
-// Create post
-router.post('/create-post', upload.array('images'), authenticateToken, async (req, res) => {
-  const { images, title, description, salary, jobType, skills, additionalNote, address } = req.body;
-
-  console.log("User Data :: ==", req.user.userId);
-  const user = await Schema.UserModelSchema.findOne({ '_id': req.user.userId });
-  console.log(user.userData);
-  if (!title || !description || !salary || !jobType || !skills || !address) {
-
-
-    return res.status(401).json({ error: 'Incomplete data provided' });
-  }
-
-  const newPost = new Schema.PostModelSchema({
-    images: req.files.map(file => ({
-      name: 'src/Images/' + file.filename,
-      data: file.buffer,
-      contentType: file.mimetype,
-    })),
-    firstName: user.userData.firstName,
-    lastName: user.userData.lastName,
-    mobileNumber: user.userData.mobileNumber,
-    profileImage: user.userData.profileImage,
-    title,
-    description,
-    salary,
-    jobType,
-    isFavourite: false,
-    skills,
-    additionalNote,
-    address,
-  });
-
-  try {
-    const savedPost = await newPost.save();
-    res.json({ message: 'Post created successfully', post: savedPost });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-// get post
-router.get('/getPost', authenticateToken, async (req, res) => {
-
-  try {
-    const userId = req.user.userId;
-    const favorite = await Schema.favoriteModelSchema.find()
-    const filteredArray = favorite.filter(item => item.userId === userId);
-    const post = await Schema.PostModelSchema.find();
-
-    filteredArray.forEach(filterItem => {
-      const correspondingPost = post.find(postItem => postItem._id.toString() === filterItem.postID);
-      if (correspondingPost) {
-        correspondingPost.isFavourite = true;
-      }
-    });
-    const newPostData = post.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    if (newPostData.length !== 0) {
-      res.send(newPostData);
-    } else {
-      res.status(error);
-    }
-  } catch (error) {
-    res.status(error);
-  }
-});
 // get country
 router.get('/country', async (req, res) => {
 
@@ -439,58 +330,6 @@ router.get('/country', async (req, res) => {
 
     res.status(error);
   }
-});
-
-// postFavourite Api
-router.post('/postFavourite', authenticateToken, async (req, res) => {
-
-  const userId = req.user.userId;
-  const { postID, isFavourite } = req.body
-  const favorite = await Schema.favoriteModelSchema.findOne({ userId: userId, postID: postID })
-  if (favorite == null) {
-    const newUser = new Schema.favoriteModelSchema({
-      userId: userId,
-      postID: postID,
-
-    });
-    await newUser.save();
-    res.json({ message: 'Post add as favorite successfully' });
-
-  } else {
-    const result = await Schema.favoriteModelSchema.deleteOne({
-      userId: userId,
-      postID: postID,
-
-    });
-    if (result.deletedCount === 1) {
-      res.json({ message: 'Post removed in favorite successfully' });
-    } else {
-      res.json({ message: 'post not found' });
-    }
-  }
-});
-// get Favourite post
-router.get('/getFavourite', authenticateToken, async (req, res) => {
-
-  const userId = req.user.userId;
-  const favorite = await Schema.favoriteModelSchema.find()
-
-  const filteredArray = favorite.filter(item => item.userId === userId);
-
-  const newArray = await Promise.all(
-    filteredArray.map(async (i) => {
-      const postData = await Schema.PostModelSchema.findOne({ _id: i.postID });
-
-      if (postData) {
-        return { ...postData.toObject(), isFavourite: true };
-      } else {
-        // Handle the case when postData is null, for example:
-        return { isFavourite: false };
-      }
-    })
-  );
-
-  res.json({ message: 'post Data', data: newArray });
 });
 
 module.exports = router;

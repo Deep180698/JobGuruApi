@@ -80,11 +80,15 @@ const mobileNumebrRegex = /^\d{10}$/; // Assuming a 10-digit mobile number forma
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization'];
 
+  console.log(token);
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized - Token not provided' });
   }
 
-  jwt.verify(token,  process.env.SECRET_KEY, (err, user) => {
+
+  jwt.verify(token,process.env.SECRET_KEY, (err, user) => {
+    console.log('Token Payload:', user);
+
     if (err) {
       return res.status(403).json({ error: 'Forbidden - Invalid token' });
     }
@@ -137,7 +141,7 @@ router.post('/signup', upload.single('profileImage'), async (req, res) => {
 
 
     const createdUser = await newUser.save();
-    const token = jwt.sign({ userId: createdUser._id }, 'your-secret-key', { expiresIn: '1h' });
+    const token = jwt.sign({ userId: createdUser._id }, process.env.SECRET_KEY);
 
     return res.status(200).json({ message: 'User signup successful.', token, data: createdUser, userId: createdUser._id });
 
@@ -178,7 +182,7 @@ router.post('/login', async (req, res) => {
     }
 
     // // Create a JWT token for authentication
-    const token = jwt.sign({ userId: user._id }, 'your-secret-key', { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY);
 
     // // Update the user record with the JWT token
     await Schema.UserModelSchema.findByIdAndUpdate(user._id, { $set: { token } });
@@ -266,8 +270,9 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 //Update-profile
-router.put('/update-profile', authenticateToken, upload.single('profileImage'), async (req, res) => {
+router.post('/update-profile', authenticateToken, upload.single('profileImage'), async (req, res) => {
 
+  console.log(req.body);
   const userId = req.user.userId; // Extracted from the token
   const updatedProfile = req.file;
   const userData = req.body

@@ -120,7 +120,7 @@ router.post('/create-post', upload.array('images'), authenticateToken, async (re
       const postsWithData = await Promise.all(
         posts.map(async (post) => {
           const userData = await Schema.UserModelSchema.findById(post.userId);
-  
+
           if(post.userId === userId){
           return  { ...post.toObject(),isMypost : true, UserData: userData.userData }
           }

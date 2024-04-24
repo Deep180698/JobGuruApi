@@ -6,8 +6,8 @@ const UserSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     countryCode: String,
-    mobileNumber:  String,
-    email:String,
+    mobileNumber: String,
+    email: String,
     password: String,
     address: String,
     DOB: String,
@@ -33,24 +33,57 @@ const SkillsSchema = new mongoose.Schema({
   skillsName: String,
   isSelect: Boolean,
 });
+// const postSchema = new mongoose.Schema({
+//   userId: String,
+//   title: String,
+//   description: String,
+//   requirement: String,
+//   salary: String,
+//   jobType: String,
+//   skills: String,
+//   additionalNote: String,
+//   address: String,
+//   isFavourite: Boolean,
+//   createdAt: { type: Date, default: Date.now() }
+// });
+
+// Create separate objects for companyDetails, userDetails, and jobDetails
+const companyDetails = {
+  companyName: '',
+  department: '',
+  addressline1: '',
+  addressline2: '',
+  country: '',
+  province: '',
+  city: '',
+  postalcode: '',
+};
+
+const userDetails = {
+  firstName: '',
+  lastName: '',
+  profileImage: '',
+};
+
+const jobDetails = {
+  title: '',
+  position: '',
+  description: '',
+  requirement: '',
+  salary: '',
+  additionalNote: '',
+  skills: '',
+  texts: [],
+  type: '',
+  jobTypeArray: []
+};
+
+// Create new post object combining all details
 const postSchema = new mongoose.Schema({
-  images: [
-    {
-      name: String,
-      data: Buffer,
-      contentType: String,
-    },
-  ],
   userId: String,
-  title: String,
-  description: String,
-  salary: String,
-  jobType: String,
-  skills: String,
-  additionalNote: String,
-  address: String,
-  isFavourite: Boolean,
-  createdAt: { type: Date, default: Date.now() }
+  companyDetails: Object,
+  userDetails: Object,
+  jobDetails: Object,
 });
 
 
@@ -63,11 +96,19 @@ const favoriteSchema = new mongoose.Schema({
   userId: String,
   postID: String
 });
+const MessageSchema = new mongoose.Schema({
+  user: String,
+  text: String,
+});
+
+
+
 
 const fieldModel = mongoose.model("Fields", fieldSchema)
 const skillsModel = mongoose.model("Skills", SkillsSchema)
 const postModel = mongoose.model("posts", postSchema)
 const favoriteModel = mongoose.model("postFavorites", favoriteSchema)
+const MessageModel = mongoose.model("MessageSchema", MessageSchema)
 
 // fieldModel.insertMany(field)
 //   .then(() => console.log('Items inserted successfully'))
@@ -80,4 +121,5 @@ module.exports = {
   UserModelSchema: userModel,
   PostModelSchema: postModel,
   favoriteModelSchema: favoriteModel,
+  MessageModelSchema: MessageModel,
 };

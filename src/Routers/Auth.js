@@ -1,5 +1,6 @@
 // import express 
 const express = require('express')
+const router = new express.Router()
 
 // import bcrypt for password encrypt
 const bcrypt = require('bcrypt')
@@ -7,7 +8,6 @@ const bcrypt = require('bcrypt')
 //  import jwt for genrate random token
 const jwt = require('jsonwebtoken');
 
-const router = new express.Router()
 
 // import schema fror fetch database
 const Schema = require('../Model/Schema')

@@ -72,34 +72,35 @@ const authenticateToken = (req, res, next) => {
 
 // Create post
 router.post('/create-post', upload.array('images'), authenticateToken, async (req, res) => {
-  const { images, title, description, salary, jobType, skills, additionalNote, address } = req.body;
+  // const { title, description, salary,requirement, jobType, skills, additionalNote, address } = req.body;
+
+  const companyDetails = JSON.parse(req.body.companyDetails);
+  const userDetails = JSON.parse(req.body.userDetails);
+  const jobDetails = JSON.parse(req.body.jobDetails);
+
+  // You can now access individual fields from each part
+  console.log('Company Details:', req.user);
+  // console.log('User Details:', userDetails);
+  // console.log('Job Details:', jobDetails);
+  const userId = req.user.userId;
 
 
-  if (!title || !description || !salary || !jobType || !skills || !address) {
+
+  if (!companyDetails || !userDetails || !jobDetails ) {
 
 
     return res.status(401).json({ error: 'Incomplete data provided' });
   }
   const newPost = new Schema.PostModelSchema({
-    images: req.files.map(file => ({
-      name: 'src/Images/' + file.filename,
-      data: file.buffer,
-      contentType: file.mimetype,
-    })),
-    userId: req.user.userId,
-    title,
-    description,
-    salary,
-    jobType,
-    isFavourite: false,
-    skills,
-    additionalNote,
-    address,
+    userId,
+   companyDetails,
+   userDetails,
+   jobDetails
   });
   try {
 
     const savedPost = await newPost.save();
-    res.json({ message: 'Post created successfully', post: savedPost });
+    res.json({ message: 'Post created successfully', post: savedPost});
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -113,7 +114,6 @@ router.get('/getPost', authenticateToken, async (req, res) => {
     // Fetch favorites for the user
     const favorites = await Schema.favoriteModelSchema.find({ userId });
 
-    console.log(userId);
     // Fetch all posts
     const posts = await Schema.PostModelSchema.find();
 
@@ -158,8 +158,74 @@ router.get('/getPost', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+router.get('/getMyPost', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Fetch favorites for the user
+    const favorites = await Schema.favoriteModelSchema.find({ userId });
+
+    // Fetch all posts
+    const posts = await Schema.PostModelSchema.find();
+
+    // Fetch user data for each post
+    const postsWithData = await Promise.all(
+      posts.map(async (post) => {
+        const userData = await Schema.UserModelSchema.findById(post.userId);
+    
+        if (post.userId === userId) {
+          return { ...post.toObject(),  UserData: userData.userData };
+        }
+      })
+    );
+
+    const filteredData = postsWithData.filter(data => data !== undefined);
+
+
+    console.log(filteredData);
+    // Update posts with favorite information
+    favorites.forEach((favorite) => {
+      const correspondingPost = filteredData.find(
+        (post) => post._id.toString() === favorite.postID
+      );
+      if (correspondingPost) {
+        correspondingPost.isFavourite = true;
+      }
+    });
+
+    // Sort posts by createdAt in descending order
+    const sortedPosts = filteredData.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+
+    if (sortedPosts.length !== 0) {
+      res.send(sortedPosts);
+    } else {
+      res.status(404).json({ error: 'No posts found' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+router.delete('/postDelete/:id', (req, res) => {
+  const postId = parseInt(req.params.id);
+
+  console.log(postId);
+  // // Find the index of the post with the given ID
+  // const index = posts.findIndex(post => post.id === postId);
+
+  // // If the post is found, remove it from the array
+  // if (index !== -1) {
+  //   posts.splice(index, 1);
+  //   res.json({ message: `Post with ID ${postId} deleted successfully` });
+  // } else {
+  //   res.status(404).json({ error: `Post with ID ${postId} not found` });
+  // }
+});
 // postFavourite Api
-router.post('/postFavourite', authenticateToken, async (req, res) => {
+router.post('/postFavourite', upload.array('image'), authenticateToken, async (req, res) => {
 
   const { postID, isFavourite, UserID } = req.body;
 
@@ -199,7 +265,6 @@ router.post('/postFavourite', authenticateToken, async (req, res) => {
 // get Favourite post
 router.get('/getFavourite', authenticateToken, async (req, res) => {
 
-
   try {
     const userId = req.user.userId;
   
@@ -219,7 +284,6 @@ router.get('/getFavourite', authenticateToken, async (req, res) => {
       return existsInPostsWithData;
     });
   
-    console.log(postData);
   
     // Fetch user data for each post
     const postsWithData1 = await Promise.all(
@@ -232,9 +296,7 @@ router.get('/getFavourite', authenticateToken, async (req, res) => {
         };
       })
     );
-  
-    console.log(postsWithData1);
-  
+    
     // Update posts with favorite information
     postsWithData1.forEach((post) => {
       const correspondingFavorite = favorites.find((favorite) => post._id.toString() === favorite.postID);
